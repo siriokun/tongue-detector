@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tongue Detector</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            text-align: center;
+        }
+
+        #pProgress,
+        #rProgress,
+        #sProgress {
+            border-radius: .5rem;
+            width: 100%;
+        }
+
+        #pProgress {
+            background-color: rgba(255, 39, 39, 0.185);
+        }
+
+        #rProgress {
+            background-color: rgba(253, 181, 47, 0.24);
+        }
+
+        #sProgress {
+            background-color: rgba(49, 255, 69, 0.24);
+        }
+
+        #myBar1,
+        #myBar2,
+        #myBar3 {
+            border-radius: .5rem;
+            width: 0%;
+            height: 40px;
+            text-align: center;
+            line-height: 40px;
+            color: #333;
+        }
+
+        #myBar1 {
+            background-color: rgba(254, 101, 101, 0.801);
+        }
+
+        #myBar2 {
+            background-color: rgba(254, 162, 64, 0.774);
+        }
+
+        #myBar3 {
+            background-color: rgba(73, 248, 134, 0.696);
+        }
+
+        #MainContainer {
+            display: grid;
+            grid-gap: 20px;
+            max-width: 22rem;
+            margin: 0 auto;
+        }
+        /* Input File */
+        .input-group {
+            position: relative;
+            display: -ms-flexbox;
+            display: flex;
+            -ms-flex-wrap: wrap;
+            flex-wrap: wrap;
+            -ms-flex-align: stretch;
+            align-items: stretch;
+            width: 100%;
+        }
+        .custom-file-input {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 0;
+            margin: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+        .custom-file-label {
+            background-color: #2ba4dc;
+            border: none;
+            border-radius: .5rem;
+            color: white;
+            padding: 16px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            transition-duration: 0.4s;
+            cursor: pointer;
+        }
+        .custom-file-label:hover {
+            background-color: #4cb1e0;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tongue Detector</h1>
+    <div id="MainContainer">
+        <img id="imagePreview" style="height: auto; width: 100%; border-radius: .5rem;" />
+
+        <div class="input-group">
+            <div class="custom-file">
+                <input id="imageUpload" type="file" class="custom-file-input">
+                <label class="custom-file-label" for="imageUpload">Choose a photo of tongue</label>
+            </div>
+        </div>
+        <div id="OutputContainer">
+            <h3>Good Tongue</h3>
+            <div id="pProgress">
+                <div id="myBar1"></div>
+            </div><br>
+            <h3>Bad Tongue</h3>
+            <div id="rProgress">
+                <div id="myBar2"></div>
+            </div><br>
+            <h3>No tongue detected</h3>
+            <div id="sProgress">
+                <div id="myBar3"></div>
+            </div><br>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const URL = './model/';
+
+        let model, labelContainer, maxPredictions;
+
+        // Load the image model 
+        async function init() {
+            const modelURL = URL + 'model.json';
+            const metadataURL = URL + 'metadata.json';
+
+            // load the model and metadata
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+        }
+
+        async function predict() {
+            // predict can take in an image, video or canvas html element
+            var image = document.getElementById('imagePreview');
+            const prediction = await model.predict(image, false);
+
+            document.getElementById("myBar1").style.width = (prediction[0].probability.toFixed(2)) * 100 + "%";
+            document.getElementById("myBar2").style.width = (prediction[1].probability.toFixed(2)) * 100 + "%";
+            document.getElementById("myBar3").style.width = (prediction[2].probability.toFixed(2)) * 100 + "%";
+
+            document.getElementById("myBar1").innerHTML = (prediction[0].probability.toFixed(2)) * 100 + "%";
+            document.getElementById("myBar2").innerHTML = (prediction[1].probability.toFixed(2)) * 100 + "%";
+            document.getElementById("myBar3").innerHTML = (prediction[2].probability.toFixed(2)) * 100 + "%";
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        function readURL(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#imagePreview').attr('src', e.target.result);
+                    $('#imagePreview').hide();
+                    $('#imagePreview').fadeIn(650);
+                };
+                reader.readAsDataURL(input.files[0]);
+                init().then(() => {
+                    predict();
+                });
+            }
+        }
+        $('#imageUpload').change(function () {
+            readURL(this);
+        });
+    </script>
+</body>
+
+</html>

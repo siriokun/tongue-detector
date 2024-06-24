@@ -12,7 +12,10 @@
             text-align: center;
         }
 
-        #pProgress, #rProgress, #sProgress {
+        #pProgress,
+        #rProgress,
+        #sProgress {
+            border-radius: .5rem;
             width: 100%;
         }
 
@@ -28,7 +31,10 @@
             background-color: rgba(49, 255, 69, 0.24);
         }
 
-        #myBar1, #myBar2, #myBar3 {
+        #myBar1,
+        #myBar2,
+        #myBar3 {
+            border-radius: .5rem;
             width: 0%;
             height: 40px;
             text-align: center;
@@ -59,6 +65,7 @@
         .button {
             background-color: #2ba4dc;
             border: none;
+            border-radius: .5rem;
             color: white;
             padding: 16px 32px;
             text-align: center;
@@ -100,10 +107,12 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>    <script type="text/javascript">
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
         const URL = './model/';
 
-        let model, webcam, labelContainer, maxPredictions;
+        let model, webcam, maxPredictions;
 
         // Load the image model and setup the webcam
         async function init() {
@@ -126,12 +135,8 @@
 
             // append elements to the DOM
             document.getElementById("webcam-container").appendChild(webcam.canvas);
-            /*labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) { // and class labels
-                labelContainer.appendChild(document.createElement("div"));
-            }*/
-        //    hide button start
-        document.getElementById("showCam").style.display = "none";
+            //    hide button start
+            document.getElementById("showCam").style.display = "none";
 
         }
 
@@ -145,11 +150,6 @@
         async function predict() {
             // predict can take in an image, video or canvas html element
             const prediction = await model.predict(webcam.canvas);
-            /*for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction =
-                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-                labelContainer.childNodes[i].innerHTML = classPrediction;
-            }*/
 
             document.getElementById("myBar1").style.width = (prediction[0].probability.toFixed(2)) * 100 + "%";
             document.getElementById("myBar2").style.width = (prediction[1].probability.toFixed(2)) * 100 + "%";
