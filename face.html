@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tongue Spoon</title>
+    <style>
+        body { 
+            text-align: center; 
+            font-family: Arial, sans-serif; 
+            background: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0;
+            padding: 10px;
+        }
+        .video-container { 
+            position: relative; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%; 
+            max-width: 640px; 
+            height: auto; 
+            background: black; 
+            border-radius: 10px; 
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        video { 
+            width: 100%; 
+            height: auto; 
+            transform: scaleX(-1); 
+            border-radius: 10px; 
+        }
+        .notification { 
+            position: absolute; 
+            bottom: 10px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            border-radius: 5px; 
+            opacity: 1; 
+            transition: opacity 0.3s ease-in-out;
+            text-align: center;
+            max-width: 90%;
+        }
+        .warning { background: rgba(255, 0, 0, 0.8); color: white; }
+        .success { background: rgba(0, 200, 0, 0.8); color: white; }
+        .error { background: rgba(255, 165, 0, 0.8); color: white; }
+        .tongue { background: rgba(0, 0, 255, 0.8); color: white; }
+        .hidden { opacity: 0; visibility: hidden; transition: opacity 1s ease-in-out; }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                max-width: 100%;
+                height: auto;
+            }
+            .notification {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tongue Spoon</h1>
+    <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div id="warning" class="notification warning hidden">Please open your mouth!</div>
+        <div id="success" class="notification success hidden">Mouth Open ✅</div>
+        <div id="tongue" class="notification tongue hidden">👅 Tongue Fully Out!</div>
+        <div id="error" class="notification error hidden">⚠️ No human face detected!</div>
+    </div>
+    <canvas id="croppedCanvas" class="hidden"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <script>
+        const video = document.getElementById("video");
+        const warning = document.getElementById("warning");
+        const success = document.getElementById("success");
+        const tongue = document.getElementById("tongue");
+        const error = document.getElementById("error");
+        const canvas = document.getElementById("overlay");
+        const ctx = canvas.getContext("2d");
+        let model, maxPredictions;
+        
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: 640, height: 480 } 
+                });                
+                video.srcObject = stream;
+                console.log("✅ Camera started!");
+                initFaceMesh();
+            } catch (err) {
+                console.error("❌ Camera error:", err);
+            }
+        }
+
+        function hideAllElements() {
+            hideElement(warning);
+            hideElement(success);
+            hideElement(tongue);
+            hideElement(error);
+        }
+
+        function showElement(el) { 
+            hideAllElements();
+            el.classList.remove("hidden"); 
+        }
+        function hideElement(el) { el.classList.add("hidden"); }
+
+        function initFaceMesh() {
+            const faceMesh = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+            });
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5,
+            });
+
+            faceMesh.onResults((results) => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    showElement(warning);
+                } else {
+                    showElement(error);
+                    setTimeout(() => showElement(warning), 3000);
+                    return;
+                }
+                
+                const landmarks = results.multiFaceLandmarks[0];
+                const upperLip = landmarks[13];
+                const lowerLip = landmarks[14];
+                const mouthOpen = Math.abs(lowerLip.y - upperLip.y);
+
+                if (mouthOpen > 0.05) {
+                    detectTongue();
+                } else {
+                    showElement(warning);
+                }
+            });
+
+            const camera = new Camera(video, {
+                onFrame: async () => await faceMesh.send({ image: video }),
+                width: 640,
+                height: 480,
+            });
+
+            faceMesh.initialize().then(() => {
+                camera.start();
+            });
+        }
+
+        async function loadTeachableMachine() {
+            const URL = "./model/";
+            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+            maxPredictions = model.getTotalClasses();
+        }
+
+        async function detectTongue() {
+            if (!model) return;
+            const prediction = await model.predict(video);
+            if (prediction[2].probability > 0.8) {
+                showElement(tongue);
+            } else {
+                showElement(success);
+            }
+        }
+
+        startCamera();
+        loadTeachableMachine();
+    </script>
+</body>
+</html>
